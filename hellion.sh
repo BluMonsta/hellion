@@ -22,8 +22,8 @@ function ACTIONS {
         mkdir Network-Recon
 	nmap -sn -T4 $SUBNET -oG Network-Recon/network-sweep.txt
 	grep Up Network-Recon/network-sweep.txt | cut -d " " -f 2 > Network-Recon/alive-hosts.txt
-	nmap -sU -r $SUBNET -oG Network-Recon/network-sweep-udp.txt
-	grep Up Network-Recon/network-sweep-udp.txt | cut -d " " -f 2 > Network-Recon/alive-hosts-udp.txt
+	#nmap -sU -r $SUBNET -oG Network-Recon/network-sweep-udp.txt
+	#grep Up Network-Recon/network-sweep-udp.txt | cut -d " " -f 2 > Network-Recon/alive-hosts-udp.txt
     fi
     if [[ ${choices[1]} ]]; then
         #Option 2 selected
