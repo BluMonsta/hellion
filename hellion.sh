@@ -27,7 +27,7 @@ function ACTIONS {
     fi
     if [[ ${choices[1]} ]]; then
         #Option 2 selected
-	nmap -sU -T4 -Pn -oN Network-Recon/TopUDP.txt -iL Network-Recon/alive-hosts-udp.txt
+	#nmap -sU -T4 -Pn -oN Network-Recon/TopUDP.txt -iL Network-Recon/alive-hosts-udp.txt
 	nmap -sS -T4 -Pn -oG Network-Recon/TopTCP.txt -iL Network-Recon/alive-hosts.txt
 	nmap -sS -T4 -Pn --top-ports 3674 -oG Network-Recon/3674-top-ports.txt -iL Network-Recon/alive-hosts.txt
 	mkdir Protocol-Specific
@@ -52,9 +52,11 @@ function ACTIONS {
         #Option 4 selected
 	mkdir OSRecon
 	nmap -O -T4 -Pn -oG OSRecon/OSDetect.txt -iL Network-Recon/alive-hosts.txt
+	nmap -p- -sS -A $SUBNET > OSRecon/service-fingerprinting.txt
     fi
     if [[ ${choices[4]} ]]; then
         #Option 5 selected
+	mk
         nbtscan -f smb-hosts.txt > hostnames.txt
     fi
     if [[ ${choices[5]} ]]; then
