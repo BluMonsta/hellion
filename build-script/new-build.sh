@@ -33,6 +33,5 @@ apt-get  -y qq install exiftool
 cd /
 cd root
 git clone https://github.com/entropy1337/infernal-twin.git
-git clone https://github.com/BluMonsta/hellion.git
 #apt-get -y -qq upgrade
 #apt-get autoclean
