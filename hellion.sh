@@ -4,68 +4,73 @@
 #created:       August 2016 / Ongoing
 #==============================================================================
 
-echo -n "What Subnet or IP Range to use eg 10.1.1.0/24 or 10.1.1.1-100 "
-read -e SUBNET
+echo -n "What Host or Range to use eg 172.16.10.2 OR 10.1.1.0/24 OR 10.1.1.1-100 "
+read -e TARGET
 
 #Menu options
-options[0]="Scan Subnet for Active Hosts"
-options[1]="Scan Alive Hosts Common Ports"
-options[2]="Scan Alive Hosts All Ports **Intensive**"
-options[3]="OS Recon Alive Hosts"
-options[4]="TBC"
-options[5]="Obtain Web Headers from Web Servers"
+options[0]="Scan Target for Active TCP Ports"
+options[1]="Scan Target TCP Ports - Uncomment for All Ports"
+options[2]="Scan Target UDP Ports - Uncomment for All Ports"
+options[3]="Scan Target Web Based Enumeration"
+options[4]="Scan Target Web Based Attacks"
+options[5]="Scan Target Uniscan"
+options[6]="Scan Target SNMP"
+options[7]="Scan Target SMTP"
 
 #Actions to take based on selection
 function ACTIONS {
     if [[ ${choices[0]} ]]; then
         #Option 1 selected
         mkdir Network-Recon
-	nmap -sn -T4 $SUBNET -oG Network-Recon/network-sweep.txt
-	grep Up Network-Recon/network-sweep.txt | cut -d " " -f 2 > Network-Recon/alive-hosts.txt
-	#nmap -sU -r $SUBNET -oG Network-Recon/network-sweep-udp.txt
-	#grep Up Network-Recon/network-sweep-udp.txt | cut -d " " -f 2 > Network-Recon/alive-hosts-udp.txt
-    fi
-    if [[ ${choices[1]} ]]; then
+	nmap -O -T4 -Pn $TARGET | tee Network-Recon/os-sweep.txt
+	nmap -sV -T4 $TARGET | tee Network-Recon/network-sweep.txt
+	fi
+    
+	if [[ ${choices[1]} ]]; then
         #Option 2 selected
-	#nmap -sU -T4 -Pn -oN Network-Recon/TopUDP.txt -iL Network-Recon/alive-hosts-udp.txt
-	nmap -sS -T4 -Pn -oG Network-Recon/TopTCP.txt -iL Network-Recon/alive-hosts.txt
-	nmap -sS -T4 -Pn --top-ports 3674 -oG Network-Recon/3674-top-ports.txt -iL Network-Recon/alive-hosts.txt
-	mkdir Protocol-Specific
-	grep /open/tcp//domain Network-Recon/TopTCP.txt | cut -d " " -f 2 > Protocol-Specific/dns-hosts.txt
-	grep /open/tcp//http Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/web-hosts.txt
-	grep /open/tcp//ssl Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/web-hosts-ssl.txt
-	grep /open/tcp//microsoft-ds Network-Recon/TopTCP.txt | cut -d " " -f 2 > Protocol-Specific/smb-hosts.txt
-	grep /open/tcp//ftp Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/ftp-hosts.txt
-	grep /open/tcp//telnet Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/telnet-hosts.txt
-	grep /open/tcp//smtp Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/smtp-hosts.txt
-	grep /open/tcp//snmp Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/snmp-hosts.txt
-	grep /open/tcp//ms-wbt-server Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/rdp-hosts.txt
-	grep /open/tcp//pop3 Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/pop3-hosts.txt
-	grep /open/tcp//imap Network-Recon/TopTCP.txt | cut -d " " -f 2  > Protocol-Specific/imap-hosts.txt
+		nmap -Pn -A -sC -sS -T4 --top-ports 3674 $TARGET | tee Network-Recon/3674-top-ports.txt
+		#nmap -Pn -A -sC -sS -T4 -p 0-65535 | tee Network-Recon/FullTCP.txt
     fi
-    if [[ ${choices[2]} ]]; then
+    
+	if [[ ${choices[2]} ]]; then
         #Option 3 selected
-	nmap -sS -T4 -Pn -p 0-65535 -oN Network-Recon/FullTCP.txt -iL Network-Recon/alive-hosts.txt
-	nmap -sU -T4 -Pn -p 0-65535 -oN Network-Recon/FullUDP.txt -iL Network-Recon/alive-hosts-udp.txt
+		nmap -Pn -A -sC -sU -T4 --top-ports 200 $TARGET | tee Network-Recon/3674-top-ports.txt
+		#nmap -Pn -A -sC -sU -p 0-65535 | tee Network-Recon/FullUDP.txt
     fi
-    if [[ ${choices[3]} ]]; then
+    
+	if [[ ${choices[3]} ]]; then
         #Option 4 selected
-	mkdir OSRecon
-	nmap -O -T4 -Pn -oG OSRecon/OSDetect.txt -iL Network-Recon/alive-hosts.txt
-	nmap -p- -sS -A $SUBNET > OSRecon/service-fingerprinting.txt
+		mkdir Web-Recon
+	nikto -h $TARGET | tee Web-Recon/nikto.txt
+	dirb http://$TARGET/ | tee Web-Recon/dirb.txt
+	gobuster -u http://$TARGET/ -w /usr/share/seclists/Discovery/Web_Content/common.txt -s '200,204,301,302,307,403,500' -e | tee Web-Recon/gobuster-common.txt
+	gobuster -u http://$TARGET/ -w /usr/share/seclists/Discovery/Web_Content/big.txt -s '200,204,301,302,307,403,500' -e | tee Web-Recon/gobuster-big.txt
     fi
-    if [[ ${choices[4]} ]]; then
-        #Option 5 selected
-	mk
-        nbtscan -f smb-hosts.txt > hostnames.txt
+    
+	if [[ ${choices[4]} ]]; then
+		#Option 5 selected
+    wfuzz -c -z file,/usr/share/wfuzz/wordlist/general/big.txt --hc 404 http://$TARGET/ | tee Web-Recon/wfuzz.txt
+	fimap -u "http://$TARGET/" | tee Web-Recon/fimap.txt
     fi
-    if [[ ${choices[5]} ]]; then
+    
+	
+	if [[ ${choices[5]} ]]; then
         #Option 6 selected
-	nohup cat web-hosts.txt | xargs -n4 curl -L &>web-headers.txt
-        nohup cat web-hosts-ssl.txt | xargs -n4 curl -L &>web-headers-ssl.txt
+	uniscan -u http://$TARGET/ -qdgj | tee Web-Recon/uniscan.txt
+    fi
+
+	if [[ ${choices[6]} ]]; then
+        #Option 7 selected
+		mkdir Service-Recon
+	onesixtyone $TARGET | tee Service-Recon/onesixtyone.txt | tee Service-Recon/smtp-user-enum.txt
+	snmpwalk $TARGET | tee Service-Recon/snmpwalk.txt | tee Service-Recon/smtp-user-enum.txt
+    fi
+	
+	if [[ ${choices[7]} ]]; then
+        #Option 8 selected
+	smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top_shortlist.txt -t $TARGET | tee Service-Recon/smtp-user-enum.txt
     fi
 }
-
 #Variables
 ERROR=" "
 
@@ -76,7 +81,7 @@ clear
 function MENU {
     echo "**** Hellion Active Enum Project ****"
     echo " "
-    echo "Subnet/Range in scope: " $SUBNET
+    echo "TARGET/Range in scope: " $TARGET
     echo " "
     for NUM in ${!options[@]}; do
         echo "[""${choices[NUM]:- }""]" $(( NUM+1 ))") ${options[NUM]}"
@@ -101,4 +106,3 @@ while MENU && read -e -p "Select the desired options using their number (again t
 done
 
 ACTIONS
-
